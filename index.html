@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>フォルダ音源プレイヤー</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
+    <style>
+        .container { margin-top: 20px; }
+        .equalizer { margin-top: 20px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h4 class="center">フォルダ音源プレイヤー</h4>
+
+    <!-- フォルダ選択 -->
+    <div class="file-field input-field">
+        <div class="btn">
+            <span>フォルダ選択</span>
+            <input type="file" id="folderInput" webkitdirectory directory multiple>
+        </div>
+        <div class="file-path-wrapper">
+            <input class="file-path validate" type="text" placeholder="フォルダを選択">
+        </div>
+    </div>
+
+    <!-- 音源リスト -->
+    <ul class="collection" id="audioList"></ul>
+
+    <!-- オーディオプレイヤー -->
+    <audio id="audioPlayer" controls></audio>
+
+    <!-- イコライザー -->
+    <div class="equalizer">
+        <label>低音</label>
+        <input type="range" id="bass" min="-40" max="40" step="1" value="0">
+        <label>中音</label>
+        <input type="range" id="mid" min="-40" max="40" step="1" value="0">
+        <label>高音</label>
+        <input type="range" id="treble" min="-40" max="40" step="1" value="0">
+    </div>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const folderInput = document.getElementById("folderInput");
+    const audioList = document.getElementById("audioList");
+    const audioPlayer = document.getElementById("audioPlayer");
+    let audioFiles = [];
+
+    // フォルダが選択されたらファイルをリストに表示
+    folderInput.addEventListener("change", function (event) {
+        audioFiles = [];
+        audioList.innerHTML = "";
+
+        const files = Array.from(event.target.files);
+        const validExtensions = [".mp3", ".wav", ".ogg"];
+
+        files.forEach(file => {
+            if (validExtensions.some(ext => file.name.endsWith(ext))) {
+                audioFiles.push(file);
+                let li = document.createElement("li");
+                li.classList.add("collection-item");
+                li.innerHTML = `<a href="#" class="audio-link">${file.name}</a>`;
+                audioList.appendChild(li);
+            }
+        });
+
+        // 音源クリック時に再生
+        document.querySelectorAll(".audio-link").forEach((link, index) => {
+            link.addEventListener("click", function (e) {
+                e.preventDefault();
+                const audioURL = URL.createObjectURL(audioFiles[index]);
+                audioPlayer.src = audioURL;
+                audioPlayer.play();
+            });
+        });
+    });
+
+    // Web Audio API イコライザー
+    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    const source = audioContext.createMediaElementSource(audioPlayer);
+    
+    const bass = createFilter(100, "lowshelf");
+    const mid = createFilter(1000, "peaking");
+    const treble = createFilter(3000, "highshelf");
+
+    source.connect(bass);
+    bass.connect(mid);
+    mid.connect(treble);
+    treble.connect(audioContext.destination);
+
+    function createFilter(frequency, type) {
+        let filter = audioContext.createBiquadFilter();
+        filter.type = type;
+        filter.frequency.value = frequency;
+        return filter;
+    }
+
+    // イコライザーの変更イベント
+    document.getElementById("bass").addEventListener("input", function () {
+        bass.gain.value = this.value;
+    });
+
+    document.getElementById("mid").addEventListener("input", function () {
+        mid.gain.value = this.value;
+    });
+
+    document.getElementById("treble").addEventListener("input", function () {
+        treble.gain.value = this.value;
+    });
+});
+</script>
+
+</body>
+</html>
